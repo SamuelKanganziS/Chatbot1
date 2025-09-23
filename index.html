@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Olive Chatbot</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header"> WAN Chatbot</div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input">
+      <input type="text" id="userInput" placeholder="Send a message...">
+      <button onclick="sendMessage()">➤</button>
+    </div>
+    <!-- Mic button floating above -->
+    <button id="micBtn">🎤</button>
+  </div>
+
+  <!-- Bot Animation (top-left corner) -->
+  <div class="bot-animation">
+    <lottie-player 
+      src="https://lottie.host/e777123a-66f1-4ca6-b4f4-6fef9ae28d84/LD24ZYKBT5.json"  
+      background="transparent"  
+      speed="1"  
+      style="width: 150px; height: 150px;"  
+      loop  
+      autoplay>
+    </lottie-player>
+  </div>
+
+<script>
+  async function sendMessage() {
+    const input = document.getElementById("userInput");
+    const message = input.value.trim();
+    if (!message) return;
+
+    addMessage(message, "user");
+    input.value = "";
+
+    try {
+      // Use relative URL so it works with Flask backend
+      const response = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+      });
+
+      const data = await response.json();
+      addMessage(data.reply, "bot");
+    } catch (error) {
+      addMessage("Error connecting to server.", "bot");
+      console.error("Chat error:", error);
+    }
+  }
+
+  function addMessage(text, sender) {
+    const chatBox = document.getElementById("chatMessages");
+    const msg = document.createElement("div");
+    msg.classList.add("message", sender);
+    msg.innerText = text;
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  // Speech-to-text setup
+  const micBtn = document.getElementById("micBtn");
+  let recognition;
+  if ("webkitSpeechRecognition" in window) {
+    recognition = new webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => {
+      micBtn.classList.add("recording");
+    };
+
+    recognition.onend = () => {
+      micBtn.classList.remove("recording");
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      document.getElementById("userInput").value = transcript;
+      sendMessage(); // auto-send after speaking
+    };
+
+    micBtn.onclick = () => {
+      recognition.start();
+    };
+  } else {
+    micBtn.disabled = true;
+    micBtn.innerText = "N/A";
+    alert("Speech recognition not supported in this browser.");
+  }
+</script>
+</body>
+</html>
